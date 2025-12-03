@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Word Game</title>
+
+  <style>
+    /* ========== GLOBAL ========== */
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(135deg, #656565, #3a3a3a, #1b1b1b);
+      background-size: 400% 400%;
+      animation: bgMove 14s ease infinite;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #fff;
+      min-height: 100vh;
+      padding-top: 20px;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      color: #f3f3f3;
+    }
+
+    /* ========== LAYOUT: BOARD + STATS ========== */
+    #container {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+      margin-top: 10px;
+    }
+
+    #left-side {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    @media (max-width: 800px) {
+      #container {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+
+    /* ========== BOARD (GRID) ========== */
+    #game {
+      display: grid;
+      grid-template-rows: repeat(6, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+      perspective: 900px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+    }
+
+    .tile {
+      width: 65px;
+      height: 65px;
+      border-radius: 14px;
+      backdrop-filter: blur(12px);
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      transform-style: preserve-3d;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-6px) scale(1.06);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.45);
+    }
+
+    /* Flip animation */
+    .flip {
+      animation: flip 0.45s ease forwards;
+    }
+
+    @keyframes flip {
+      0%   { transform: rotateX(0deg); }
+      50%  { transform: rotateX(90deg); }
+      100% { transform: rotateX(0deg); }
+    }
+
+    .correct {
+      background: #4caf50 !important;
+      color: #fff;
+      border-color: #4caf50;
+    }
+
+    .present {
+      background: #b59f3b !important;
+      color: #fff;
+      border-color: #b59f3b;
+    }
+
+    .absent {
+      background: #3a3a3c !important;
+      color: #fff;
+      border-color: #3a3a3c;
+    }
+
+    #message {
+      margin-top: 12px;
+      min-height: 22px;
+      font-size: 1rem;
+      text-align: center;
+    }
+
+    #answer {
+      font-size: 0.9rem;
+      margin-top: 5px;
+      opacity: 0.75;
+      text-align: center;
+    }
+
+    #restart-btn {
+      margin-top: 14px;
+      padding: 9px 18px;
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(8px);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      display: none; /* shown only on game over */
+    }
+
+    #restart-btn:hover {
+      filter: brightness(1.07);
+    }
+
+    /* ========== STATS PANEL ========== */
+    #stats {
+      padding: 12px 16px;
+      border-radius: 16px;
+      background: rgba(15, 15, 15, 0.65);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(16px);
+      min-width: 230px;
+      max-width: 260px;
+      font-size: 0.86rem;
+    }
+
+    #stats-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 1.3px;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      flex: 1;
+      min-width: 70px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .stat-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      color: #b9b9b9;
+      letter-spacing: 0.5px;
+    }
+
+    #reset-stats-btn {
+      margin-top: 10px;
+      padding: 8px 14px;
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(220, 53, 69, 0.3);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    #reset-stats-btn:hover {
+      filter: brightness(1.05);
+    }
+
+    /* ========== KEYBOARD ========== */
+    #keyboard {
+      margin-top: 26px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .keyboard-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .key {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 12px 10px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      min-width: 40px;
+      color: #fff;
+      font-size: 0.9rem;
+      transition: transform 0.12s ease, background 0.12s ease;
+    }
+
+    .key:hover {
+      transform: translateY(-3px);
+    }
+
+    .wide {
+      min-width: 70px;
+    }
+
+    .key.correct {
+      background: #4caf50;
+      border-color: #4caf50;
+    }
+
+    .key.present {
+      background: #b59f3b;
+      border-color: #b59f3b;
+    }
+
+    .key.absent {
+      background: #3a3a3c;
+      border-color: #3a3a3c;
+    }
+  </style>
+</head>
+<body>
+  <h1>Word Game</h1>
+
+  <div id="container">
+    <div id="left-side">
+      <div id="game"></div>
+      <div id="message"></div>
+      <div id="answer"></div>
+      <button id="restart-btn">Try again</button>
+    </div>
+
+    <div id="stats">
+      <div id="stats-title">STATS</div>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value" id="games-played">0</div>
+          <div class="stat-label">Played</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="wins">0</div>
+          <div class="stat-label">Wins</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="win-pct">0%</div>
+          <div class="stat-label">Win %</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-value" id="current-streak">0</div>
+          <div class="stat-label">Current streak</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="max-streak">0</div>
+          <div class="stat-label">Max streak</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value" id="avg-guesses">-</div>
+          <div class="stat-label">Avg guesses (wins)</div>
+        </div>
+      </div>
+      <button id="reset-stats-btn">Reset stats</button>
+    </div>
+  </div>
+
+  <div id="keyboard">
+    <div class="keyboard-row"></div>
+    <div class="keyboard-row"></div>
+    <div class="keyboard-row"></div>
+  </div>
+
+  <script>
+    /* ========== CONFIG ========== */
+    const WORDS = [
+      "APPLE", "CRANE", "PLANT", "SHARE", "WORLD",
+      "LIGHT", "SMILE", "CHAIR", "TABLE", "WATER"
+    ];
+    const ROWS = 6;
+    const COLS = 5;
+    const FLIP_DELAY = 260; // ms between tile flips
+
+    let TARGET = pickNewWord();
+
+    let currentRow = 0;
+    let currentCol = 0;
+    let isGameOver = false;
+    let isAnimating = false;
+    let guessesThisGame = 0;
+
+    const game = document.getElementById("game");
+    const message = document.getElementById("message");
+    const answer = document.getElementById("answer");
+    const restartBtn = document.getElementById("restart-btn");
+    const resetStatsBtn = document.getElementById("reset-stats-btn");
+
+    /* ========== STATS ========== */
+    const STATS_KEY = "word_game_stats";
+
+    function defaultStats() {
+      return {
+        gamesPlayed: 0,
+        wins: 0,
+        currentStreak: 0,
+        maxStreak: 0,
+        totalGuesses: 0
+      };
+    }
+
+    function loadStats() {
+      try {
+        const raw = localStorage.getItem(STATS_KEY);
+        if (!raw) return defaultStats();
+        const parsed = JSON.parse(raw);
+        return {
+          gamesPlayed: parsed.gamesPlayed || 0,
+          wins: parsed.wins || 0,
+          currentStreak: parsed.currentStreak || 0,
+          maxStreak: parsed.maxStreak || 0,
+          totalGuesses: parsed.totalGuesses || 0
+        };
+      } catch {
+        return defaultStats();
+      }
+    }
+
+    let stats = loadStats();
+    updateStatsUI();
+
+    function saveStats() {
+      localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+    }
+
+    function recordGame(won, guessesUsed) {
+      stats.gamesPlayed++;
+      if (won) {
+        stats.wins++;
+        stats.currentStreak++;
+        if (stats.currentStreak > stats.maxStreak) {
+          stats.maxStreak = stats.currentStreak;
+        }
+        stats.totalGuesses += guessesUsed;
+      } else {
+        stats.currentStreak = 0;
+      }
+      saveStats();
+      updateStatsUI();
+    }
+
+    function updateStatsUI() {
+      document.getElementById("games-played").textContent = stats.gamesPlayed;
+      document.getElementById("wins").textContent = stats.wins;
+
+      const winPct =
+        stats.gamesPlayed === 0
+          ? 0
+          : Math.round((stats.wins / stats.gamesPlayed) * 100);
+      document.getElementById("win-pct").textContent = winPct + "%";
+
+      document.getElementById("current-streak").textContent =
+        stats.currentStreak;
+      document.getElementById("max-streak").textContent = stats.maxStreak;
+
+      if (stats.wins === 0) {
+        document.getElementById("avg-guesses").textContent = "-";
+      } else {
+        const avg = stats.totalGuesses / stats.wins;
+        document.getElementById("avg-guesses").textContent = avg.toFixed(2);
+      }
+    }
+
+    resetStatsBtn.addEventListener("click", () => {
+      const sure = confirm("Reset ALL stats? This cannot be undone.");
+      if (!sure) return;
+      stats = defaultStats();
+      saveStats();
+      updateStatsUI();
+    });
+
+    /* ========== GRID BUILD ========== */
+    const grid = [];
+    for (let r = 0; r < ROWS; r++) {
+      const rowEl = document.createElement("div");
+      rowEl.className = "row";
+      const row = [];
+      for (let c = 0; c < COLS; c++) {
+        const tile = document.createElement("div");
+        tile.className = "tile";
+        rowEl.appendChild(tile);
+        row.push(tile);
+      }
+      game.appendChild(rowEl);
+      grid.push(row);
+    }
+
+    /* ========== KEYBOARD BUILD ========== */
+    const keyboardLayout = ["QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"];
+    const keyboardRows = document.querySelectorAll(".keyboard-row");
+    const keyMap = {};
+
+    keyboardLayout.forEach((row, idx) => {
+      const rowEl = keyboardRows[idx];
+      if (idx === 2) {
+        createKey("Enter", "ENTER", "wide", rowEl);
+      }
+      for (const ch of row) {
+        createKey(ch, ch, "", rowEl);
+      }
+      if (idx === 2) {
+        createKey("Delete", "BACKSPACE", "wide", rowEl);
+      }
+    });
+
+    function createKey(label, value, extraClass, parent) {
+      const btn = document.createElement("button");
+      btn.className = "key " + extraClass;
+      btn.textContent = label;
+      btn.dataset.key = value;
+      parent.appendChild(btn);
+      btn.addEventListener("click", () => handleKey(value));
+      keyMap[value] = btn;
+    }
+
+    /* ========== INPUT HANDLING ========== */
+    function showMessage(msg) {
+      message.textContent = msg;
+    }
+
+    function handleKey(key) {
+      if (isGameOver || isAnimating) return;
+
+      if (key === "ENTER") {
+        submitGuess();
+      } else if (key === "BACKSPACE") {
+        deleteLetter();
+      } else if (/^[A-Z]$/.test(key)) {
+        addLetter(key);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      let key = e.key;
+      if (key === "Enter") key = "ENTER";
+      else if (key === "Backspace") key = "BACKSPACE";
+      else key = key.toUpperCase();
+
+      if (key === "ENTER" || key === "BACKSPACE" || /^[A-Z]$/.test(key)) {
+        handleKey(key);
+      }
+    });
+
+    function addLetter(letter) {
+      if (currentCol >= COLS) return;
+      const tile = grid[currentRow][currentCol];
+      tile.textContent = letter;
+      currentCol++;
+    }
+
+    function deleteLetter() {
+      if (currentCol === 0) return;
+      currentCol--;
+      const tile = grid[currentRow][currentCol];
+      tile.textContent = "";
+    }
+
+    function submitGuess() {
+      if (currentCol < COLS) {
+        showMessage("Not enough letters.");
+        return;
+      }
+
+      const guessLetters = [];
+      for (let c = 0; c < COLS; c++) {
+        guessLetters.push(grid[currentRow][c].textContent);
+      }
+      const guess = guessLetters.join("");
+      guessesThisGame++;
+      evaluateGuess(guess);
+    }
+
+    /* ========== EVALUATION + FLIP ========== */
+    function evaluateGuess(guess) {
+      const targetLetters = TARGET.split("");
+      const result = new Array(COLS).fill("absent");
+      const letterCount = {};
+
+      for (const ch of targetLetters) {
+        letterCount[ch] = (letterCount[ch] || 0) + 1;
+      }
+
+      // correct positions
+      for (let i = 0; i < COLS; i++) {
+        if (guess[i] === targetLetters[i]) {
+          result[i] = "correct";
+          letterCount[guess[i]]--;
+        }
+      }
+
+      // present but wrong position
+      for (let i = 0; i < COLS; i++) {
+        if (result[i] === "correct") continue;
+        const ch = guess[i];
+        if (letterCount[ch] > 0) {
+          result[i] = "present";
+          letterCount[ch]--;
+        }
+      }
+
+      isAnimating = true;
+
+      for (let i = 0; i < COLS; i++) {
+        const tile = grid[currentRow][i];
+        const ch = guess[i];
+        const status = result[i];
+
+        setTimeout(() => {
+          tile.classList.add("flip");
+
+          // apply color halfway through flip visually
+          setTimeout(() => {
+            tile.classList.add(status);
+
+            const keyBtn = keyMap[ch];
+            if (keyBtn) {
+              if (status === "correct") {
+                keyBtn.classList.remove("present", "absent");
+                keyBtn.classList.add("correct");
+              } else if (status === "present") {
+                if (!keyBtn.classList.contains("correct")) {
+                  keyBtn.classList.remove("absent");
+                  keyBtn.classList.add("present");
+                }
+              } else {
+                if (
+                  !keyBtn.classList.contains("correct") &&
+                  !keyBtn.classList.contains("present")
+                ) {
+                  keyBtn.classList.add("absent");
+                }
+              }
+            }
+          }, 140); // mid-flip
+
+        }, i * FLIP_DELAY);
+      }
+
+      const totalAnimTime = COLS * FLIP_DELAY + 350;
+
+      setTimeout(() => {
+        const won = guess === TARGET;
+
+        if (won) {
+          showMessage("You got it!");
+          answer.textContent = `Answer: ${TARGET}`;
+          recordGame(true, guessesThisGame);
+          isGameOver = true;
+          restartBtn.style.display = "inline-block";
+        } else {
+          currentRow++;
+          currentCol = 0;
+
+          if (currentRow === ROWS) {
+            showMessage("Out of tries!");
+            answer.textContent = `Answer: ${TARGET}`;
+            recordGame(false, guessesThisGame);
+            isGameOver = true;
+            restartBtn.style.display = "inline-block";
+          } else {
+            showMessage("");
+          }
+        }
+
+        isAnimating = false;
+      }, totalAnimTime);
+    }
+
+    /* ========== RESTART GAME ========== */
+    restartBtn.addEventListener("click", resetGame);
+
+    function resetGame() {
+      currentRow = 0;
+      currentCol = 0;
+      isGameOver = false;
+      isAnimating = false;
+      guessesThisGame = 0;
+      TARGET = pickNewWord();
+
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const tile = grid[r][c];
+          tile.textContent = "";
+          tile.className = "tile";
+        }
+      }
+
+      Object.values(keyMap).forEach((btn) => {
+        btn.classList.remove("correct", "present", "absent");
+      });
+
+      showMessage("");
+      answer.textContent = "";
+      restartBtn.style.display = "none";
+
+      console.log("NEW TARGET:", TARGET);
+    }
+
+    /* ========== UTILS ========== */
+    function pickNewWord() {
+      return WORDS[Math.floor(Math.random() * WORDS.length)];
+    }
+
+    console.log("TARGET:", TARGET); // for testing / cheating
+  </script>
+</body>
+</html>
